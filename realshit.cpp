@@ -25,7 +25,7 @@ int main() {
     //     return -1;
     // }
 //
-    cv::Mat origFrame = cv::imread("/Users/alex/Downloads/photo1.jpg");
+    cv::Mat origFrame = cv::imread("/Users/vinaypanicker/Desktop/c++/blob_stats/Photos/FYI_components_04.png");
 
     if (origFrame.empty()) {
         std::cerr << "Could not open or find the image" << std::endl;
@@ -72,7 +72,7 @@ int main() {
         double centroid_x = centroid.at<double>(i, 0);
         double centroid_y = centroid.at<double>(i, 1);
         // Print out the center coordinates
-        std::cout << "Centroid " << i << " is: " << centroid_x << ", " << centroid_y<< " /n";
+        std::cout << "Centroid " << i << " is: " << centroid_x << ", " << centroid_y<< " \n";
 
 
         // Extract the binary image for the current component
@@ -85,12 +85,24 @@ int main() {
         double m20 = m.m10*m.m10;
         double m02 = m.m01*m.m01;
 
-        //double orientation = 1/2*tan((2(m.m00*m11 - m.m10*m.m01))/((m.m00*m20-(m.m10*m.m10))-(m.m00*m02-(m.m01*m.m01))));
-        double orientation = 0.5 * tan((2 * (m.m00 * m11 - m20 * m.m01)) / ((m.m00 * m20 - m.m10 * m.m10) - (m.m00 * m02 - m.m01 * m.m01)));
+        // Print out the moments
+        std::cout << "m00: " << m.m00 << " m10: " << m.m10 << " m01: " << m.m01 << " m20: " << m20 << " m02: " << m02 << " m11: " << m11 << " \n";
+
+        // Find orientation of the object using arc tan
+        double orientation = 0.5 * atan((2 * (m.m00 * m11 - m.m10 * m.m01)) / ((m.m00 * m20 - m.m10 * m.m10) - (m.m00 * m02 - m.m01 * m.m01)));
+
+        // Print out the orientation
+        std::cout << "Orientation " << i << " is: " << orientation << " \n";
+
+        // Draw the line of the orientation
+        int lineLength = 100;
+        cv::line(origFrame, cv::Point(centroid_x, centroid_y), cv::Point(centroid_x + lineLength * cos(orientation), centroid_y + lineLength * sin(orientation)), cv::Scalar(0, 255, 0), 4);
+        cv::line(origFrame, cv::Point(centroid_x, centroid_y), cv::Point(centroid_x - lineLength * cos(orientation), centroid_y - lineLength * sin(orientation)), cv::Scalar(0, 255, 0), 4);
+
 
         // // coordinates of centroid
         // cout<< Mat(p)<< endl;
-        std::cout << "Axis " << i << " is: " << orientation <<  " /n";
+        // std::cout << "Axis " << i << " is: " << orientation <<  " /n";
 
         // Drawing on the original image
         // Length of cross arms
