@@ -25,7 +25,7 @@ int main() {
     //     return -1;
     // }
 //
-    cv::Mat origFrame = cv::imread("/Users/vinaypanicker/Desktop/c++/blob_stats/Photos/DEMO_circle_fish_star_01.jpg");
+    cv::Mat origFrame = cv::imread("/Users/alex/Downloads/photo1.jpg");
 
     if (origFrame.empty()) {
         std::cerr << "Could not open or find the image" << std::endl;
@@ -73,6 +73,24 @@ int main() {
         double centroid_y = centroid.at<double>(i, 1);
         // Print out the center coordinates
         std::cout << "Centroid " << i << " is: " << centroid_x << ", " << centroid_y<< " /n";
+
+
+        // Extract the binary image for the current component
+        cv::Mat componentBinary = (labels == i);
+
+        // Calculate moments for the current component
+        cv::Moments m = moments(componentBinary, true);
+
+        double m11 = m.m10*m.m01;
+        double m20 = m.m10*m.m10;
+        double m02 = m.m01*m.m01;
+
+        //double orientation = 1/2*tan((2(m.m00*m11 - m.m10*m.m01))/((m.m00*m20-(m.m10*m.m10))-(m.m00*m02-(m.m01*m.m01))));
+        double orientation = 0.5 * tan((2 * (m.m00 * m11 - m20 * m.m01)) / ((m.m00 * m20 - m.m10 * m.m10) - (m.m00 * m02 - m.m01 * m.m01)));
+
+        // // coordinates of centroid
+        // cout<< Mat(p)<< endl;
+        std::cout << "Axis " << i << " is: " << orientation <<  " /n";
 
         // Drawing on the original image
         // Length of cross arms
