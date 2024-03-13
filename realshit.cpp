@@ -15,6 +15,8 @@ Last updated: 06/03/24
 
 */
 
+
+
 int main() {
 //
     // cv::VideoCapture cap(0); // On my laptop "0" is the built-in camera. 
@@ -23,7 +25,7 @@ int main() {
     //     return -1;
     // }
 //
-    cv::Mat origFrame = cv::imread("/Users/alex/Downloads/photo1.jpg");
+    cv::Mat origFrame = cv::imread("/Users/vinaypanicker/Desktop/c++/blob_stats/Photos/DEMO_circle_fish_star_01.jpg");
 
     if (origFrame.empty()) {
         std::cerr << "Could not open or find the image" << std::endl;
@@ -38,7 +40,6 @@ int main() {
 
 //    
     //cap >> origFrame; // Do i need cap
-
     // if (origFrame.empty()) {
     //     std::cerr << "No frame captured?" << std::endl;
     //     return -1;
@@ -52,14 +53,17 @@ int main() {
 
     // Converting grey scale to binary
     cv::threshold(greyFrame, binaryFrame, 0, 255, cv::THRESH_OTSU);
-//Delete
-    cv::imshow("Grey", greyFrame);
-    cv::imshow("Binary", binaryFrame);
-//
+    cv::bitwise_not(binaryFrame, binaryFrame);
+
+    //Delete
+    // cv::imshow("Grey", greyFrame);
+    // cv::imshow("Binary", binaryFrame);
+
     // Finding the number of components, size of objects and centroid
     cv::Mat labels, stats, centroid;
-    int numLabels = cv::connectedComponentsWithStats(binaryFrame, labels, stats, centroid, 4);
-    std::cout << "hello" << std::endl;
+    int numLabels = cv::connectedComponentsWithStats(binaryFrame, labels, stats, centroid);
+
+    
     // Get the centroid of the components
     for(int i = 1; i < numLabels; i++){
         // double* centroid_ptr = centroid.ptr<double>(i);
@@ -68,7 +72,7 @@ int main() {
         double centroid_x = centroid.at<double>(i, 0);
         double centroid_y = centroid.at<double>(i, 1);
         // Print out the center coordinates
-        std::cout << "Centroid " << i << " is: " << centroid_x << ", " << centroid_y<< " ";
+        std::cout << "Centroid " << i << " is: " << centroid_x << ", " << centroid_y<< " /n";
 
         // Drawing on the original image
         // Length of cross arms
