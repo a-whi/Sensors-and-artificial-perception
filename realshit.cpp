@@ -18,14 +18,14 @@ Last updated: 06/03/24
 
 
 int main() {
-//
+
     // cv::VideoCapture cap(0); // On my laptop "0" is the built-in camera. 
     // if (!cap.isOpened()) {
     //     std::cerr << "Error opening the camera!" << std::endl;
     //     return -1;
     // }
-//
-    cv::Mat origFrame = cv::imread("/Users/vinaypanicker/Desktop/c++/blob_stats/Photos/FYI_components_04.png");
+
+    cv::Mat origFrame = cv::imread("/Users/alex/Downloads/999.png");
 
     if (origFrame.empty()) {
         std::cerr << "Could not open or find the image" << std::endl;
@@ -34,26 +34,28 @@ int main() {
 
     cv::imshow("origFrame", origFrame);
 
-    //cv::Mat origFrame; // Original frame
+   //cv::Mat origFrame; // Original frame
     cv::Mat greyFrame; // Creating a greyscale frame
     cv::Mat binaryFrame; // Creating a black & white frame
 
-//    
-    //cap >> origFrame; // Do i need cap
+   
+    // cap >> origFrame; // Do i need cap
     // if (origFrame.empty()) {
     //     std::cerr << "No frame captured?" << std::endl;
     //     return -1;
     // }
 
     // cv::imshow("Original", origFrame);
-//
+
 
     // Convert image to grey scale
     cv::cvtColor(origFrame, greyFrame, cv::COLOR_BGR2GRAY);
 
     // Converting grey scale to binary
-    cv::threshold(greyFrame, binaryFrame, 0, 255, cv::THRESH_OTSU);
+    cv::threshold(greyFrame, binaryFrame, 0, 255, cv::THRESH_BINARY+cv::THRESH_OTSU);
     cv::bitwise_not(binaryFrame, binaryFrame);
+
+    cv::imshow("biFrame", binaryFrame);
 
     //Delete
     // cv::imshow("Grey", greyFrame);
@@ -61,7 +63,7 @@ int main() {
 
     // Finding the number of components, size of objects and centroid
     cv::Mat labels, stats, centroid;
-    int numLabels = cv::connectedComponentsWithStats(binaryFrame, labels, stats, centroid);
+    int numLabels = cv::connectedComponentsWithStats(binaryFrame, labels, stats, centroid, 8);
 
     
     // Get the centroid of the components
@@ -85,12 +87,33 @@ int main() {
         double m20 = m.m10*m.m10;
         double m02 = m.m01*m.m01;
 
+        // i = m10, j = m01
+        // m11 = m10*m01
+        // m20 = m10*m10
+        // m02 = m01*m01
+
         // Print out the moments
-        std::cout << "m00: " << m.m00 << " m10: " << m.m10 << " m01: " << m.m01 << " m20: " << m20 << " m02: " << m02 << " m11: " << m11 << " \n";
+        //std::cout << "m00: " << m.m00 << " m10: " << m.m10 << " m01: " << m.m01 << " m20: " << m20 << " m02: " << m02 << " m11: " << m11 << " \n";
 
         // Find orientation of the object using arc tan
-        double orientation = 0.5 * atan((2 * (m.m00 * m11 - m.m10 * m.m01)) / ((m.m00 * m20 - m.m10 * m.m10) - (m.m00 * m02 - m.m01 * m.m01)));
+        double numerator = 2 * ((m.m00 * m11) - (m.m10 * m.m01));
+        double denominator = ((m.m00 * m20) - (m.m10 * m.m10)) - ((m.m00 * m02) - (m.m01 * m.m01));
 
+        //std::cout << "num: " << numerator << " denominator: " << denominator << "\n";
+
+        //double orientation = 0.5 * atan(numerator/denominator);
+
+        double orientation;
+        if (numerator > 0 && denominator > 0) { // +
+            orientation = 0.5 * (((180/CV_PI) * (atan(numerator / denominator))));
+        } else if (numerator > 0 && denominator < 0) { // + & -
+            orientation = 0.5 * (((180/CV_PI) * (atan(numerator / denominator))) - 270);
+        } else if (numerator < 0 && denominator < 0) { //  -
+            orientation = 0.5 * (((180/CV_PI) * (atan(numerator / denominator))) - 180);
+        } else { // numerator < 0 && denominator > 0 - & +
+            orientation = 0.5 * (((180/CV_PI) * ( atan(numerator / denominator))) - 90);
+        }
+        
         // Print out the orientation
         std::cout << "Orientation " << i << " is: " << orientation << " \n";
 
@@ -98,7 +121,6 @@ int main() {
         int lineLength = 100;
         cv::line(origFrame, cv::Point(centroid_x, centroid_y), cv::Point(centroid_x + lineLength * cos(orientation), centroid_y + lineLength * sin(orientation)), cv::Scalar(0, 255, 0), 4);
         cv::line(origFrame, cv::Point(centroid_x, centroid_y), cv::Point(centroid_x - lineLength * cos(orientation), centroid_y - lineLength * sin(orientation)), cv::Scalar(0, 255, 0), 4);
-
 
         // // coordinates of centroid
         // cout<< Mat(p)<< endl;
