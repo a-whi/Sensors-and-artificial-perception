@@ -1,20 +1,50 @@
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <cmath>
-
-/*
-  g++ -o opencv_cam opencv_cam.cpp -std=c++17^
-    -I "C:\msys64\mingw64\include\opencv4"^
-    -L "C:\msys64\mingw64\bin"^
-    -lopencv_core-409 -lopencv_highgui-409 -lopencv_imgcodecs-409^
-    -lopencv_imgproc-409 -lopencv_videoio-409
-*/
 /*
 Created by: Alexander Whitfield
 Last updated: 06/03/24
 
 */
+int momentsCal(cv::Mat binaryFrame){
+    cv::Moments m = moments(binaryFrame, true);
+    int m00 = 0, m11 = 0, m10 = 0, m01 = 0, m20 = 0, m02 = 0;
+    for(int i = 0; i < binaryFrame.rows; i++){
+        for (int j = 0; j < binaryFrame.cols; j++){
+            if (binaryFrame.at<uchar>(i,j) != 0){
+                m00 += 1;
+                m11 += i * j;
+                m10 += i; 
+                m01 += j;
+                m20 += i * i;
+                m02 += j * j;
+            }
+        }
+    }
+    // Print out the moments
+    std::cout << "m00: " << m00 << " m10: " << m10 << " m01: " << m01 << " m20: " << m20 << " m02: " << m02 << " m11: " << m11 << " \n";
 
+    // Find orientation of the object using arc tan
+    double numerator = 2 * ((m00 * m11) - (m10 * m01));
+    double denominator = ((m00 * m20) - (m10 * m10)) - ((m00 * m02) - (m01 * m01));
+
+    std::cout << "num: " << numerator << " denominator: " << denominator << "\n";
+
+    //double orientation = 0.5 * atan(numerator/denominator);
+
+    double orientation;
+    if (numerator > 0 && denominator > 0) { // +
+        orientation = 0.5 * (((180/CV_PI) * (atan(numerator / denominator))));
+    } else if (numerator > 0 && denominator < 0) { // + & -
+        orientation = 0.5 * (((180/CV_PI) * (atan(numerator / denominator))) - 270);
+    } else if (numerator < 0 && denominator < 0) { //  -
+        orientation = 0.5 * (((180/CV_PI) * (atan(numerator / denominator))) - 180);
+    } else { // numerator < 0 && denominator > 0 - & +
+        orientation = 0.5 * (((180/CV_PI) * ( atan(numerator / denominator))) - 90);
+    }
+    
+    return orientation;
+}
 
 
 int main() {
@@ -25,7 +55,7 @@ int main() {
     //     return -1;
     // }
 
-    cv::Mat origFrame = cv::imread("/Users/alex/Downloads/999.png");
+    cv::Mat origFrame = cv::imread("/Users/alex/Downloads/photo1.jpg");
 
     if (origFrame.empty()) {
         std::cerr << "Could not open or find the image" << std::endl;
@@ -57,14 +87,12 @@ int main() {
 
     cv::imshow("biFrame", binaryFrame);
 
-    //Delete
-    // cv::imshow("Grey", greyFrame);
-    // cv::imshow("Binary", binaryFrame);
-
     // Finding the number of components, size of objects and centroid
     cv::Mat labels, stats, centroid;
     int numLabels = cv::connectedComponentsWithStats(binaryFrame, labels, stats, centroid, 8);
 
+    // std::vector<std::vector<cv::Point>> contours;
+    // cv::findContours(binaryFrame, contours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
     
     // Get the centroid of the components
     for(int i = 1; i < numLabels; i++){
@@ -80,40 +108,7 @@ int main() {
         // Extract the binary image for the current component
         cv::Mat componentBinary = (labels == i);
 
-        // Calculate moments for the current component
-        cv::Moments m = moments(componentBinary, true);
-
-        double m11 = m.m10*m.m01;
-        double m20 = m.m10*m.m10;
-        double m02 = m.m01*m.m01;
-
-        // i = m10, j = m01
-        // m11 = m10*m01
-        // m20 = m10*m10
-        // m02 = m01*m01
-
-        // Print out the moments
-        //std::cout << "m00: " << m.m00 << " m10: " << m.m10 << " m01: " << m.m01 << " m20: " << m20 << " m02: " << m02 << " m11: " << m11 << " \n";
-
-        // Find orientation of the object using arc tan
-        double numerator = 2 * ((m.m00 * m11) - (m.m10 * m.m01));
-        double denominator = ((m.m00 * m20) - (m.m10 * m.m10)) - ((m.m00 * m02) - (m.m01 * m.m01));
-
-        //std::cout << "num: " << numerator << " denominator: " << denominator << "\n";
-
-        //double orientation = 0.5 * atan(numerator/denominator);
-
-        double orientation;
-        if (numerator > 0 && denominator > 0) { // +
-            orientation = 0.5 * (((180/CV_PI) * (atan(numerator / denominator))));
-        } else if (numerator > 0 && denominator < 0) { // + & -
-            orientation = 0.5 * (((180/CV_PI) * (atan(numerator / denominator))) - 270);
-        } else if (numerator < 0 && denominator < 0) { //  -
-            orientation = 0.5 * (((180/CV_PI) * (atan(numerator / denominator))) - 180);
-        } else { // numerator < 0 && denominator > 0 - & +
-            orientation = 0.5 * (((180/CV_PI) * ( atan(numerator / denominator))) - 90);
-        }
-        
+        double orientation =  momentsCal(componentBinary);
         // Print out the orientation
         std::cout << "Orientation " << i << " is: " << orientation << " \n";
 
@@ -121,10 +116,6 @@ int main() {
         int lineLength = 100;
         cv::line(origFrame, cv::Point(centroid_x, centroid_y), cv::Point(centroid_x + lineLength * cos(orientation), centroid_y + lineLength * sin(orientation)), cv::Scalar(0, 255, 0), 4);
         cv::line(origFrame, cv::Point(centroid_x, centroid_y), cv::Point(centroid_x - lineLength * cos(orientation), centroid_y - lineLength * sin(orientation)), cv::Scalar(0, 255, 0), 4);
-
-        // // coordinates of centroid
-        // cout<< Mat(p)<< endl;
-        // std::cout << "Axis " << i << " is: " << orientation <<  " /n";
 
         // Drawing on the original image
         // Length of cross arms
@@ -144,14 +135,6 @@ int main() {
     // Display the original frame with crosses
     cv::imshow("Image with Crosses", origFrame);
 
-// //// For axis part
-    // cv::Moments m = moments(binaryFrame, true);
-    // cv::Point centroid(m.m10 / m.m00, m.m01 / m.m00);
-//         int lineLength = 50;
-//         cv::line(origFrame, centroid_x, centroid_x + lineLength, cv::Scalar(0, 255, 0), 2);
-//         cv::line(origFrame, centroid_x, centroid_x - lineLength, cv::Scalar(0, 255, 0), 2);
-
-
     // Closes all windows
     // Wait for a key press indefinitely
     cv::waitKey(0);
@@ -160,3 +143,46 @@ int main() {
     
     return 0;
 }
+
+/*
+old moments stuff
+        // Extract the binary image for the current component
+        cv::Mat componentBinary = (labels == i);
+
+        // Calculate moments for the current component
+        // cv::Moments m = moments(componentBinary, true);
+        //cv::Moments m = cv::moments(contours[i]);
+
+        // double m11 = m.m10*m.m01;
+        // double m20 = m.m10*m.m10;
+        // double m02 = m.m01*m.m01;
+
+        // i = m10, j = m01
+        // m11 = m10*m01
+        // m20 = m10*m10
+        // m02 = m01*m01
+
+        // Print out the moments
+        std::cout << "m00: " << m.m00 << " m10: " << m.m10 << " m01: " << m.m01 << " m20: " << m20 << " m02: " << m02 << " m11: " << m11 << " \n";
+
+        // Find orientation of the object using arc tan
+        double numerator = 2 * ((m.m00 * m11) - (m.m10 * m.m01));
+        double denominator = ((m.m00 * m20) - (m.m10 * m.m10)) - ((m.m00 * m02) - (m.m01 * m.m01));
+
+        std::cout << "num: " << numerator << " denominator: " << denominator << "\n";
+
+        //double orientation = 0.5 * atan(numerator/denominator);
+
+        double orientation;
+        if (numerator > 0 && denominator > 0) { // +
+            orientation = 0.5 * (((180/CV_PI) * (atan(numerator / denominator))));
+        } else if (numerator > 0 && denominator < 0) { // + & -
+            orientation = 0.5 * (((180/CV_PI) * (atan(numerator / denominator))) - 270);
+        } else if (numerator < 0 && denominator < 0) { //  -
+            orientation = 0.5 * (((180/CV_PI) * (atan(numerator / denominator))) - 180);
+        } else { // numerator < 0 && denominator > 0 - & +
+            orientation = 0.5 * (((180/CV_PI) * ( atan(numerator / denominator))) - 90);
+        }
+        
+        // Print out the orientation
+        std::cout << "Orientation " << i << " is: " << orientation << " \n";*/
