@@ -32,17 +32,29 @@ int momentsCal(cv::Mat binaryFrame){
 
     //double orientation = 0.5 * atan(numerator/denominator);
 
-    // double orientation;
-    // if (numerator > 0 && denominator > 0) { // +
-    //     orientation = 0.5 * (((180/CV_PI) * (atan(numerator / denominator))));
-    // } else if (numerator > 0 && denominator < 0) { // + & -
-    //     orientation = 0.5 * (((180/CV_PI) * (atan(numerator / denominator))) - 270);
-    // } else if (numerator < 0 && denominator < 0) { //  -
-    //     orientation = 0.5 * (((180/CV_PI) * (atan(numerator / denominator))) - 180);
-    // } else { // numerator < 0 && denominator > 0 - & +
-    //     orientation = 0.5 * (((180/CV_PI) * ( atan(numerator / denominator))) - 90);
-    // }
-    double orientation = 0.5 * atan2(2*m11, m20 - m02);
+    double orientation;
+    if (numerator > 0 && denominator > 0) { // +
+        orientation = 0.5 * (((180/CV_PI) * (atan2(numerator,denominator))));
+        //print in q1
+        std :: cout << "Q1" << std::endl;
+
+    } else if (numerator > 0 && denominator < 0) { // + & -
+        orientation = 0.5 * (((180/CV_PI) * (atan2(numerator,denominator)))) + 180;
+        //print in q2
+        std :: cout << "Q2" << std::endl;
+
+    } else if (numerator < 0 && denominator < 0) { //  -
+        orientation = 0.5 * (((180/CV_PI) * (atan2(numerator, denominator)))) - 90;
+        //print in q3
+        std :: cout << "Q3" << std::endl;
+
+    } else { // numerator < 0 && denominator > 0 - & +
+        orientation = 0.5 * (((180/CV_PI) * ( atan2(numerator,denominator)))) + 90;
+        //print in q4
+        std :: cout << "Q4" << std::endl;
+    }
+
+    // double orientation = 0.5 * atan2(numerator, denominator);
     return orientation;
 }
 
@@ -55,7 +67,7 @@ int main() {
     //     return -1;
     // }
 
-    cv::Mat origFrame = cv::imread("/Users/alex/Downloads/999.png");
+    cv::Mat origFrame = cv::imread("/Users/vinaypanicker/Desktop/fish.png");
 
     if (origFrame.empty()) {
         std::cerr << "Could not open or find the image" << std::endl;
@@ -114,8 +126,8 @@ int main() {
 
         // Draw the line of the orientation
         int lineLength = 100;
-        cv::line(origFrame, cv::Point(centroid_x, centroid_y), cv::Point(centroid_x + lineLength * cos(orientation), centroid_y + lineLength * sin(orientation)), cv::Scalar(0, 255, 0), 4);
-        cv::line(origFrame, cv::Point(centroid_x, centroid_y), cv::Point(centroid_x - lineLength * cos(orientation), centroid_y - lineLength * sin(orientation)), cv::Scalar(0, 255, 0), 4);
+        cv::line(origFrame, cv::Point(centroid_x, centroid_y), cv::Point(centroid_x + lineLength * cos(orientation*CV_PI / 180), centroid_y + lineLength * sin(orientation*CV_PI / 180)), cv::Scalar(0, 255, 0), 4);
+        cv::line(origFrame, cv::Point(centroid_x, centroid_y), cv::Point(centroid_x - lineLength * cos(orientation*CV_PI / 180), centroid_y - lineLength * sin(orientation*CV_PI / 180)), cv::Scalar(0, 255, 0), 4);
 
         // Drawing on the original image
         // Length of cross arms
