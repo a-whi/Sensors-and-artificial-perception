@@ -32,17 +32,17 @@ int momentsCal(cv::Mat binaryFrame){
 
     //double orientation = 0.5 * atan(numerator/denominator);
 
-    double orientation;
-    if (numerator > 0 && denominator > 0) { // +
-        orientation = 0.5 * (((180/CV_PI) * (atan(numerator / denominator))));
-    } else if (numerator > 0 && denominator < 0) { // + & -
-        orientation = 0.5 * (((180/CV_PI) * (atan(numerator / denominator))) - 270);
-    } else if (numerator < 0 && denominator < 0) { //  -
-        orientation = 0.5 * (((180/CV_PI) * (atan(numerator / denominator))) - 180);
-    } else { // numerator < 0 && denominator > 0 - & +
-        orientation = 0.5 * (((180/CV_PI) * ( atan(numerator / denominator))) - 90);
-    }
-    
+    // double orientation;
+    // if (numerator > 0 && denominator > 0) { // +
+    //     orientation = 0.5 * (((180/CV_PI) * (atan(numerator / denominator))));
+    // } else if (numerator > 0 && denominator < 0) { // + & -
+    //     orientation = 0.5 * (((180/CV_PI) * (atan(numerator / denominator))) - 270);
+    // } else if (numerator < 0 && denominator < 0) { //  -
+    //     orientation = 0.5 * (((180/CV_PI) * (atan(numerator / denominator))) - 180);
+    // } else { // numerator < 0 && denominator > 0 - & +
+    //     orientation = 0.5 * (((180/CV_PI) * ( atan(numerator / denominator))) - 90);
+    // }
+    double orientation = 0.5 * ((180/CV_PI) * atan2(2*m11, m20 - m02));
     return orientation;
 }
 
@@ -55,7 +55,7 @@ int main() {
     //     return -1;
     // }
 
-    cv::Mat origFrame = cv::imread("/Users/alex/Downloads/photo1.jpg");
+    cv::Mat origFrame = cv::imread("/Users/alex/Downloads/999.png");
 
     if (origFrame.empty()) {
         std::cerr << "Could not open or find the image" << std::endl;
