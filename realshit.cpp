@@ -42,7 +42,7 @@ int momentsCal(cv::Mat binaryFrame){
     // } else { // numerator < 0 && denominator > 0 - & +
     //     orientation = 0.5 * (((180/CV_PI) * ( atan(numerator / denominator))) - 90);
     // }
-    double orientation = 0.5 * ((180/CV_PI) * atan2(2*m11, m20 - m02));
+    double orientation = 0.5 * atan2(2*m11, m20 - m02);
     return orientation;
 }
 
