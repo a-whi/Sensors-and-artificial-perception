@@ -1,36 +1,32 @@
+# Created by Alex Whitfield
+
 import cv2
 import numpy as np
-import random
 
 # Set image dimensions
-image_width = 800
-image_height = 800
+image_width = 2000
+image_height = 2000
 
 # Create a blank image
 image = np.ones((image_height, image_width, 3), dtype=np.uint8) * 255
 
-rows = 3
+rows = 6
 cols = 3
-angles = [0, 0, 0, 5, 10, 15, 20, 30, 45]
+angles = range(0,90,5) # Creates and array from 0 to 90 with increments of 5
 angle_index = 0 
 
-# Function to generate a random rectangle
-def generate_rectangle(image, row, col, angle):
-    x1 = col * (image_width // 3) + 50  # Calculate x-coordinate for top-left corner
-    y1 = row * (image_height // 3) + 50  # Calculate y-coordinate for top-left corner
-    x2 = x1 + 50  # Calculate x-coordinate for bottom-right corner
-    y2 = y1 + 150  # Calculate y-coordinate for bottom-right corner
-    color = (random.randint(0, 5), random.randint(0, 5), random.randint(0, 5))  # Random color
-    center = ((x1 + x2) // 2, (y1 + y2) // 2)  # Center of the rectangle
-    size = (50, 125)  # Size of the rectangle
-    print('CUNT ', angle)
-    cv2.ellipse(image, center, size, angle, 0, 360, color, -1)  # Draw filled rotated rectangle
+# Function to draw the ellipses
+def generate_ellipse(image, row, col, angle):
+    x_center = (col + 0.5) * (image_width // cols)  # Calculate x-coordinate of the center
+    y_center = (row + 0.5) * (image_height // rows)  # Calculate y-coordinate of the center
+    size = (50, 125)  # Size of the ellipse
+    cv2.ellipse(image, (int(x_center), int(y_center)), size, angle, 0, 360, (0, 0, 0), -1)  # Draw filled rotated ellipse
 
-# Generate and draw rectangles
+
+# Generate and draw ellipse
 for i in range(rows):
     for j in range(cols):
-        print('PING: ', angle_index)
-        generate_rectangle(image, i, j, angles[angle_index])
+        generate_ellipse(image, i, j, angles[angle_index])
         angle_index += 1
 
 # Display the image
