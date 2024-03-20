@@ -24,6 +24,7 @@ int main() {
     }
 
 //Delete    //cv::Mat origFrame = cv::imread("/Users/alex/Downloads/nice.png");
+    cv::Mat origFrame;
 
     if (origFrame.empty()) {
         std::cerr << "Could not open or find the image" << std::endl;
