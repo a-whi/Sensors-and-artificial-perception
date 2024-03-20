@@ -14,21 +14,32 @@ char getGroupLetter(int groupNumber) {
     return static_cast<char>('A' + groupNumber);
 }
 
+//Calculate delta angle between two angles
+double deltaAngle(double actual, double calculated) {
+    double delta = actual - (calculated* 180/CV_PI);
+    //calculate absolute value of delta
+    if (delta < 0) {
+        delta = -delta;
+    }
+
+    return delta;
+}
+
 int main() {
 
-    // Camera Capture
-    cv::VideoCapture cap(0); // On my laptop "0" is the built-in camera. 
-    if (!cap.isOpened()) {
-        std::cerr << "Error opening the camera!" << std::endl;
-        return -1;
-    }
-    
-    cv::Mat origFrame;
+    // // Camera Capture
+    // cv::VideoCapture cap(0); // On my laptop "0" is the built-in camera. 
+    // if (!cap.isOpened()) {
+    //     std::cerr << "Error opening the camera!" << std::endl;
+    //     return -1;
+    // }
+    cv::Mat origFrame = cv::imread("/Users/vinaypanicker/Downloads/yum.png");
+    // cv::Mat origFrame;
 
-    if (origFrame.empty()) {
-        std::cerr << "Could not open or find the image" << std::endl;
-        return -1;
-    }
+    // if (origFrame.empty()) {
+    //     std::cerr << "Could not open or find the image" << std::endl;
+    //     return -1;
+    // }
 
     cv::Mat greyFrame; // Creating a greyscale frame
     cv::Mat binaryFrame; // Creating a black & white frame
@@ -55,6 +66,9 @@ int main() {
 
     // Define an array to store x and y components for labeling groups
     std::vector<std::pair<int, int>> xyComponents;
+
+    // Define an an array to store calculated orientation
+    std::vector<double> orientation_arr;
     
     // Loop to get centroids, axis of minimum moment of inertia and draw on the original image
     for(int i = 1; i < numLabels; i++){
@@ -69,6 +83,10 @@ int main() {
 
         // Calculate axis of minimum moment of inertia
         double orientation = 0.5 * atan2(2 * m.mu11, m.mu20-m.mu02);
+
+        // Push orientation to array
+        double orientation_abs = std::abs(orientation);
+        orientation_arr.push_back(orientation_abs);
 
         // Print out the center coordinates
         std::cout << "Centroid_M " << i << " is: " << centroid_xm << ", " << centroid_ym<< " \n";
@@ -158,13 +176,62 @@ int main() {
         std::cout << "\n";
     }
 
+    // Sort orientation in descending order
+    std::sort(orientation_arr.begin(), orientation_arr.end(), std::greater<double>());
+
+    // Print out orientation array
+    std::cout << "Orientation array: ";
+    for (int i = 0; i < orientation_arr.size(); i++) {
+        std::cout << orientation_arr[i] * 180/CV_PI << " ";
+    }
+    
+    // Create array of actual orientation from 90 to 0 with increments of 5
+    std::vector<double> actual_orientation;
+    for (int i = 90; i >= 0; i -= 5) {
+        actual_orientation.push_back(i);
+    }
+
+    // Create array to store the actual and delta angle as tuple 
+    std::vector<std::tuple<double, double>> delta_angle;
+
+    // Loop to calculate delta angle and store in array
+    for (int i = 0; i < actual_orientation.size(); i++) {
+        // print actual_orientation[i] and orientation_arr[i]
+        std::cout << "Actual orientation: " << actual_orientation[i] << " Calculated orientation: " << orientation_arr[i] * 180/CV_PI << "\n";
+
+        double delta = deltaAngle(actual_orientation[i], orientation_arr[i]);
+        //print out delta angle
+        std::cout << "Delta angle for " << actual_orientation[i] << " is: " << delta << "\n";
+        delta_angle.push_back(std::make_tuple(actual_orientation[i], delta));
+    }
+
+    // Open a pipe to Gnuplot
+    FILE *gnuplotPipe = popen("gnuplot -persist", "w");
+
+    // Send Gnuplot commands
+    fprintf(gnuplotPipe, "set title 'Angle v Delta (Angle - Calculated)'\n");
+    fprintf(gnuplotPipe, "plot '-' with lines title 'Data'\n");
+
+    // Send data points
+    for (const auto& point : delta_angle) {
+        double x = std::get<0>(point);
+        double y = std::get<1>(point);
+        fprintf(gnuplotPipe, "%lf %lf\n", x, y);
+    }
+
+    // End of data
+    fprintf(gnuplotPipe, "e\n");
+
+    // Close the pipe
+    pclose(gnuplotPipe);
+
     // Display the original frame
     cv::imshow("Image with Crosses", origFrame);
 
     // Closes all windows
     // Wait for a key press indefinitely
     cv::waitKey(0);
-    cap.release();
+    //cap.release();
     cv::destroyAllWindows();
     
     return 0;
