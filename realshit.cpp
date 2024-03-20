@@ -22,8 +22,7 @@ int main() {
         std::cerr << "Error opening the camera!" << std::endl;
         return -1;
     }
-
-//Delete    //cv::Mat origFrame = cv::imread("/Users/alex/Downloads/nice.png");
+    
     cv::Mat origFrame;
 
     if (origFrame.empty()) {
@@ -101,6 +100,8 @@ int main() {
 
         // Draw the bounding box
         cv::rectangle(origFrame, cv::Point(x, y), cv::Point(x + width, y + height), cv::Scalar(255, 0, 0), 2);
+        cv::putText(origFrame, std::to_string(i), cv::Point(x + width, y), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(255, 0, 0), 2);
+
 
         // Add x and y components to the array to be used later when labeling by group
         xyComponents.push_back(std::make_pair(x, y));
