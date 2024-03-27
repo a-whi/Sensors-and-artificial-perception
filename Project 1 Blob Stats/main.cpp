@@ -7,7 +7,7 @@ TRC 3500 Project 1: Calculating Blob Statistics
 #include <iostream>
 #include <cmath>
 #include <tuple>
-
+//
 
 // Function used for grouping the blobs by letter
 char getGroupLetter(int groupNumber) {
@@ -27,19 +27,21 @@ double deltaAngle(double actual, double calculated) {
 
 int main() {
 
-    // // Camera Capture
-    // cv::VideoCapture cap(0); // On my laptop "0" is the built-in camera. 
-    // if (!cap.isOpened()) {
-    //     std::cerr << "Error opening the camera!" << std::endl;
-    //     return -1;
-    // }
-    cv::Mat origFrame = cv::imread("/Users/vinaypanicker/Downloads/yum.png");
-    // cv::Mat origFrame;
+    cv::VideoCapture cap(0); // On my laptop "0" is the built-in camera. 
+    if (!cap.isOpened()) {
+        std::cerr << "Error opening the camera!" << std::endl;
+        return -1;
+    } 
 
-    // if (origFrame.empty()) {
-    //     std::cerr << "Could not open or find the image" << std::endl;
-    //     return -1;
-    // }
+    cv::Mat origFrame;  
+    cv::Mat origFrame2;
+    cap >> origFrame;
+    cap >> origFrame2;
+
+    if (origFrame.empty()) {
+        std::cerr << "No frame captured?" << std::endl;
+        return -1;
+    }
 
     cv::Mat greyFrame; // Creating a greyscale frame
     cv::Mat binaryFrame; // Creating a black & white frame
@@ -101,13 +103,13 @@ int main() {
         cv::Point pt1_135(centroid_xm + crossArmLength * cos(135 * CV_PI / 180), centroid_ym + crossArmLength * sin(135 * CV_PI / 180));
         cv::Point pt2_135(centroid_xm - crossArmLength * cos(135 * CV_PI / 180), centroid_ym - crossArmLength * sin(135 * CV_PI / 180));
 
-        cv::line(origFrame, pt1_45, pt2_45, cv::Scalar(0, 0, 255), 2);
-        cv::line(origFrame, pt1_135, pt2_135, cv::Scalar(0, 0, 255), 2);
+        cv::line(origFrame2, pt1_45, pt2_45, cv::Scalar(0, 0, 255), 2);
+        cv::line(origFrame2, pt1_135, pt2_135, cv::Scalar(0, 0, 255), 2);
 
         // Draw the axis line in green
         int lineLength = 100;
-        cv::line(origFrame, cv::Point(centroid_xm, centroid_ym), cv::Point(centroid_xm + lineLength * cos(orientation), centroid_ym + lineLength * sin(orientation)), cv::Scalar(0, 255, 0), 4);
-        cv::line(origFrame, cv::Point(centroid_xm, centroid_ym), cv::Point(centroid_xm - lineLength * cos(orientation), centroid_ym - lineLength * sin(orientation)), cv::Scalar(0, 255, 0), 4);
+        cv::line(origFrame2, cv::Point(centroid_xm, centroid_ym), cv::Point(centroid_xm + lineLength * cos(orientation), centroid_ym + lineLength * sin(orientation)), cv::Scalar(0, 255, 0), 4);
+        cv::line(origFrame2, cv::Point(centroid_xm, centroid_ym), cv::Point(centroid_xm - lineLength * cos(orientation), centroid_ym - lineLength * sin(orientation)), cv::Scalar(0, 255, 0), 4);
 
         // Get x & y values to draw boxes around the blobs
         int x = stats.at<int>(i, cv::CC_STAT_LEFT);
@@ -117,8 +119,8 @@ int main() {
         int area = stats.at<int>(i, cv::CC_STAT_AREA);
 
         // Draw the bounding box
-        cv::rectangle(origFrame, cv::Point(x, y), cv::Point(x + width, y + height), cv::Scalar(255, 0, 0), 2);
-        cv::putText(origFrame, std::to_string(i), cv::Point(x + width, y), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(255, 0, 0), 2);
+        cv::rectangle(origFrame2, cv::Point(x, y), cv::Point(x + width, y + height), cv::Scalar(255, 0, 0), 5);
+        cv::putText(origFrame2, std::to_string(i), cv::Point(x + width, y), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(255, 0, 0), 2);
 
 
         // Add x and y components to the array to be used later when labeling by group
@@ -170,68 +172,19 @@ int main() {
         std::cout << "Group " << getGroupLetter(i) << " has the following components: ";
         for (auto const& comp : groupedComponents[i]) {
             int index = std::get<0>(comp) - 1; // Adjust index to start from 0
-            cv::putText(origFrame, std::string(1, std::toupper(getGroupLetter(i))), cv::Point(xyComponents[index].first, xyComponents[index].second), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(255, 0, 0), 2);
+            cv::putText(origFrame2, std::string(1, std::toupper(getGroupLetter(i))), cv::Point(xyComponents[index].first, xyComponents[index].second), cv::FONT_HERSHEY_SIMPLEX, 2, cv::Scalar(255, 0, 0), 2);
             std::cout << std::get<0>(comp) << " ";
         }
         std::cout << "\n";
     }
 
-    // Sort orientation in descending order
-    std::sort(orientation_arr.begin(), orientation_arr.end(), std::greater<double>());
-
-    // Print out orientation array
-    std::cout << "Orientation array: ";
-    for (int i = 0; i < orientation_arr.size(); i++) {
-        std::cout << orientation_arr[i] * 180/CV_PI << " ";
-    }
-    
-    // Create array of actual orientation from 90 to 0 with increments of 5
-    std::vector<double> actual_orientation;
-    for (int i = 90; i >= 0; i -= 5) {
-        actual_orientation.push_back(i);
-    }
-
-    // Create array to store the actual and delta angle as tuple 
-    std::vector<std::tuple<double, double>> delta_angle;
-
-    // Loop to calculate delta angle and store in array
-    for (int i = 0; i < actual_orientation.size(); i++) {
-        // print actual_orientation[i] and orientation_arr[i]
-        std::cout << "Actual orientation: " << actual_orientation[i] << " Calculated orientation: " << orientation_arr[i] * 180/CV_PI << "\n";
-
-        double delta = deltaAngle(actual_orientation[i], orientation_arr[i]);
-        //print out delta angle
-        std::cout << "Delta angle for " << actual_orientation[i] << " is: " << delta << "\n";
-        delta_angle.push_back(std::make_tuple(actual_orientation[i], delta));
-    }
-
-    // Open a pipe to Gnuplot
-    FILE *gnuplotPipe = popen("gnuplot -persist", "w");
-
-    // Send Gnuplot commands
-    fprintf(gnuplotPipe, "set title 'Angle v Delta (Angle - Calculated)'\n");
-    fprintf(gnuplotPipe, "plot '-' with lines title 'Data'\n");
-
-    // Send data points
-    for (const auto& point : delta_angle) {
-        double x = std::get<0>(point);
-        double y = std::get<1>(point);
-        fprintf(gnuplotPipe, "%lf %lf\n", x, y);
-    }
-
-    // End of data
-    fprintf(gnuplotPipe, "e\n");
-
-    // Close the pipe
-    pclose(gnuplotPipe);
-
     // Display the original frame
-    cv::imshow("Image with Crosses", origFrame);
+    cv::imshow("Image with Crosses", origFrame2);
 
     // Closes all windows
     // Wait for a key press indefinitely
     cv::waitKey(0);
-    //cap.release();
+    cap.release();
     cv::destroyAllWindows();
     
     return 0;
