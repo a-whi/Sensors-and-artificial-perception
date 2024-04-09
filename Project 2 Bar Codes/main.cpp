@@ -1,6 +1,6 @@
 /*
 Created by: Alex Whitfield and Vinay Panicker
-TRC 3500 Project 1: Calculating Blob Statistics   
+TRC 3500 Project 2: Decoding an EAN-13 Barcode 
 */
 
 #include <opencv2/opencv.hpp>
@@ -10,85 +10,56 @@ TRC 3500 Project 1: Calculating Blob Statistics
 
 int main() {
 
-    cv::VideoCapture cap(0); // On my laptop "0" is the built-in camera. 
-    if (!cap.isOpened()) {
-        std::cerr << "Error opening the camera!" << std::endl;
-        return -1;
-    } 
-
-    cv::Mat origFrame;  
-    cv::Mat origFrame2;
-    //cap >> origFrame;
-
-    // Variables for the box around the barcode
-    vector<Point> corners;
-    vector<string> decode_info;
-    vector<string> decode_type;
-
-    // Loop to keep camera on till button is pressed and image is captured
-    while (true) {
-        cap >> origFrame; // Capture frame from camera
-
-        // Check if the frame is empty
-        if (origFrame.empty()) {
-            std::cerr << "No frame captured?" << std::endl;
-            break;
-        }
-
-        cv::imshow("Camera", origFrame);
-
-        // Wait for keypress (100 ms delay)
-        int key = cv::waitKey(100);
-
-        // Check if the user pressed any key to capture the photo
-        if (key != -1) {
-            // Display the captured photo
-            cv::imshow("Captured Photo", origFrame);
-            break; // Exit the loop after capturing the photo
-        }
-        // Check if the user pressed the ESC key to exit
-        else if (key == 27) {
-            break; // Exit the loop if ESC is pressed
-        }
-    }
-
-    cap >> origFrame2;
-
-    cv::Mat greyFrame; // Creating a greyscale frame
-    cv::Mat binaryFrame; // Creating a black & white frame
-
-    // Converting grey scale to binary
-    cv::threshold(greyFrame, binaryFrame, 100, 255, cv::THRESH_BINARY_INV | cv::THRESH_OTSU);
-
-
-
-    cv::barcode::BarcodeDetector bardet;
-    cv::Mat img = cv::imread("barcode_image.jpg");
-    
-    // Detect and decode barcodes
-    bool success;
-    std::string decoded_info;
-    int decoded_type;
-    std::tie(success, decoded_info, decoded_type) = bardet.detect(img);
-
-
-
-
-
-
-
-
-
-
-
-    // Display the original frame
-    cv::imshow("Image with Crosses", origFrame2);
-
-    // Closes all windows
-    // Wait for a key press indefinitely
-    cv::waitKey(0);
-    cap.release();
-    cv::destroyAllWindows();
     
     return 0;
+}
+
+
+
+// This function crops the captured frame so its just the barcode
+cv::Mat crop_rect(cv::RotatedRect rect, std::vector<cv::Point2f> box, cv::Mat img) {
+    float W = rect.size.width;
+    float H = rect.size.height;
+
+    std::vector<float> Xs;
+    std::vector<float> Ys;
+
+    // Thix takes the coordinates of the corners of the box and stores it in Xs and Ys
+    for (auto point : box) {
+        Xs.push_back(point.x);
+        Ys.push_back(point.y);
+    }
+
+
+    float x1 = *std::min_element(Xs.begin(), Xs.end());
+    float x2 = *std::max_element(Xs.begin(), Xs.end());
+    float y1 = *std::min_element(Ys.begin(), Ys.end());
+    float y2 = *std::max_element(Ys.begin(), Ys.end());
+
+
+    // Finds the center point of the box
+    cv::Point2f center = cv::Point2f((x1 + x2) / 2, (y1 + y2) / 2);
+    cv::Size2f size = cv::Size2f(x2 - x1, y2 - y1);
+    // Crops the barcode given the box size
+    cv::Mat cropped;
+    cv::getRectSubPix(img, size, center, cropped);
+
+    // Rotates the image so the barcode is in correct orientation
+    float angle = rect.angle;
+    if (angle != 90) { // need rotation
+        if (angle > 45) {
+            angle = 0 - (90 - angle);
+        }
+        cv::Mat M = cv::getRotationMatrix2D(cv::Point2f(size.width / 2, size.height / 2), angle, 1.0);
+        cv::warpAffine(cropped, cropped, M, size);
+
+        // Determine the width and height of the final rotated region   
+        float croppedW = (H > W) ? H : W; // If H is greater than W, use H, otherwise use W
+        float croppedH = (H < W) ? H : W;
+
+        //Final rotated region from the rotated cropped image
+        cv::getRectSubPix(cropped, cv::Size2f(croppedW, croppedH), cv::Point2f(size.width / 2, size.height / 2), cropped);
+        return cropped;
+    }
+    return cropped;
 }
