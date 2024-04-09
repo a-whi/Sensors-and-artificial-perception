@@ -5,61 +5,141 @@ TRC 3500 Project 2: Decoding an EAN-13 Barcode
 
 #include <opencv2/opencv.hpp>
 #include <iostream>
-#include <cmath>
-#include <tuple>
 
-int main() {
-
-    
-    return 0;
-}
-
-
-
-// This function crops the captured frame so its just the barcode
-cv::Mat crop_rect(cv::RotatedRect rect, std::vector<cv::Point2f> box, cv::Mat img) {
+cv::Mat crop_rect(cv::RotatedRect rect, cv::Point2f box[], cv::Mat img) {
     float W = rect.size.width;
     float H = rect.size.height;
-
-    std::vector<float> Xs;
-    std::vector<float> Ys;
-
-    // Thix takes the coordinates of the corners of the box and stores it in Xs and Ys
-    for (auto point : box) {
-        Xs.push_back(point.x);
-        Ys.push_back(point.y);
+    std::vector<float> Xs, Ys;
+    for (int i = 0; i < 4; ++i) {
+        Xs.push_back(box[i].x);
+        Ys.push_back(box[i].y);
     }
-
-
     float x1 = *std::min_element(Xs.begin(), Xs.end());
     float x2 = *std::max_element(Xs.begin(), Xs.end());
     float y1 = *std::min_element(Ys.begin(), Ys.end());
     float y2 = *std::max_element(Ys.begin(), Ys.end());
 
-
-    // Finds the center point of the box
+    // Center of rectangle in source image
     cv::Point2f center = cv::Point2f((x1 + x2) / 2, (y1 + y2) / 2);
+    // Size of the upright rectangle bounding the rotated rectangle
     cv::Size2f size = cv::Size2f(x2 - x1, y2 - y1);
-    // Crops the barcode given the box size
+    // Cropped upright rectangle
     cv::Mat cropped;
     cv::getRectSubPix(img, size, center, cropped);
 
-    // Rotates the image so the barcode is in correct orientation
     float angle = rect.angle;
     if (angle != 90) { // need rotation
-        if (angle > 45) {
+        if (angle > 45)
             angle = 0 - (90 - angle);
-        }
+        // Rotation matrix
         cv::Mat M = cv::getRotationMatrix2D(cv::Point2f(size.width / 2, size.height / 2), angle, 1.0);
         cv::warpAffine(cropped, cropped, M, size);
 
-        // Determine the width and height of the final rotated region   
-        float croppedW = (H > W) ? H : W; // If H is greater than W, use H, otherwise use W
-        float croppedH = (H < W) ? H : W;
-
-        //Final rotated region from the rotated cropped image
+        float croppedW = H > W ? H : W;
+        float croppedH = H < W ? H : W;
+        // Final cropped & rotated rectangle
         cv::getRectSubPix(cropped, cv::Size2f(croppedW, croppedH), cv::Point2f(size.width / 2, size.height / 2), cropped);
-        return cropped;
     }
     return cropped;
+}
+
+std::map<std::string, cv::Mat> detect_barcode(int camera_index = 0) {
+    // Initialize video capture device
+    cv::VideoCapture cap(camera_index);
+    if (!cap.isOpened()) {
+        std::cout << "Failed to open camera" << std::endl;
+        return {};
+    }
+
+    bool film = true;
+
+    while (film) {
+        // Capture frame-by-frame
+        cv::Mat frame;
+        cap >> frame;
+        if (frame.empty()) {
+            std::cout << "Failed to grab frame" << std::endl;
+            break;
+        }
+
+        // Resize the frame
+        cv::resize(frame, frame, cv::Size(), 0.7, 0.7, cv::INTER_CUBIC);
+
+        // Convert frame to grayscale
+        cv::Mat gray;
+        cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
+
+        // Calculate x & y gradient
+        cv::Mat gradX, gradY;
+        cv::Sobel(gray, gradX, CV_32F, 1, 0, -1);
+        cv::Sobel(gray, gradY, CV_32F, 0, 1, -1);
+
+        // Subtract the y-gradient from the x-gradient
+        cv::Mat gradient;
+        cv::subtract(gradX, gradY, gradient);
+        cv::convertScaleAbs(gradient, gradient);
+
+        // Blur the image
+        cv::Mat blurred;
+        cv::blur(gradient, blurred, cv::Size(3, 3));
+
+        // Threshold the image
+        cv::Mat thresh;
+        cv::threshold(blurred, thresh, 225, 255, cv::THRESH_BINARY);
+
+        // Construct a closing kernel and apply it to the thresholded image
+        cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(21, 7));
+        cv::Mat closed;
+        cv::morphologyEx(thresh, closed, cv::MORPH_CLOSE, kernel);
+
+        // Perform a series of erosions and dilations
+        cv::erode(closed, closed, cv::Mat(), cv::Point(-1, -1), 4);
+        cv::dilate(closed, closed, cv::Mat(), cv::Point(-1, -1), 4);
+
+        // Find the contours in the thresholded image, then sort the contours
+        // by their area, keeping only the largest one
+        std::vector<std::vector<cv::Point>> cnts;
+        cv::findContours(closed.clone(), cnts, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
+        if (!cnts.empty()) {
+            std::vector<cv::Point> c = *std::max_element(cnts.begin(), cnts.end(),
+                [](const std::vector<cv::Point>& a, const std::vector<cv::Point>& b) {
+                    return cv::contourArea(a) < cv::contourArea(b);
+                });
+
+            // Compute the rotated bounding box of the largest contour
+            cv::RotatedRect rect = cv::minAreaRect(c);
+            cv::Point2f box[4];
+            rect.points(box);
+            cv::Mat cropped = crop_rect(rect, box, frame);
+
+            // Draw a bounding box around the detected barcode
+            cv::drawContours(frame, std::vector<std::vector<cv::Point>>({std::vector<cv::Point>(box, box + 4)}), -1, cv::Scalar(0, 255, 0), 3);
+
+            // Save the cropped region as an image
+            cv::imwrite("cropped.jpg", cropped);
+
+            // Plot the centroid of the barcode
+            cv::Moments M = cv::moments(c, true);
+            cv::Point centroid(M.m10 / M.m00, M.m01 / M.m00);
+            cv::circle(frame, centroid, 5, cv::Scalar(0, 0, 255), -1);
+        }
+
+        // Display the resulting frame
+        cv::imshow("Barcode Detection", frame);
+
+        // Break the loop when 'q' is pressed
+        if (cv::waitKey(1) == 'q')
+            break;
+    }
+
+    // Release the video capture device and close all windows
+    cap.release();
+    cv::destroyAllWindows();
+    return {};
+}
+
+int main() {
+    detect_barcode();
+    return 0;
 }
