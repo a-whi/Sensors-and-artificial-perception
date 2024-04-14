@@ -5,6 +5,71 @@ TRC 3500 Project 2: Decoding an EAN-13 Barcode
 
 #include <opencv2/opencv.hpp>
 #include <iostream>
+//////////////////////////////////////////////////////
+
+int getAT_Value(double value){
+    if (value < 2.5/7){
+        return 2;
+    }elif (value < 3.5/7){
+        return 3;
+    }elif (value < 4.5/7){
+        return 4;
+    }else{
+        return 5;
+    }
+}
+
+
+
+
+
+void convert_patterns_to_length(std::vector<int>& pattern) {
+    for (int i = 0; i <= pattern.size(); i++){
+        patterns[i] = patterns[i].size();
+    }
+}
+
+std::tuple<std::string, bool> decode_line(const cv::Mat& line) {
+    std::vector<Code> bars = read_bars(line);
+
+    auto[leftGuard, leftBarcode, centerGaurd, rightBarcode, rightGuard] = classify_bars(bars);
+
+    convert_patterns_to_length(leftBarcode);
+    convert_patterns_to_length(rightBarcode);
+    auto[left_codes] = read_patterns(leftBarcode, true);
+    auto[right_codes] = read_patterns(rightBarcode, false);
+
+    // Get EAN-13 from left and right codes
+    std::string ean13 = get_ean13(left_codes, right_codes);
+
+    bool is_valid = verify(ean13);
+
+    return std::make_tuple(ean13, is_valid);
+}
+
+std::tuple<std::string, bool, cv::Mat> decode(const cv::Mat& img) {
+    cv::Mat grey;
+    cv::cvtColor(img, gray, cv::COLOR_BGR2GRAY);
+
+    cv::Mat thresh;
+
+    cv::threshold(greyFrame, binaryFrame, 200, 255, cv::THRESH_BINARY_INV | cv::THRESH_OTSU);
+    cv::bitwise_not(thresh, thresh);
+
+    std::string ean13;
+    bool is_valid = false;
+
+    for (int i = img.rows - 1; i >= 0; --i) {
+        std::tie(ean13, is_valid, std::ignore) = decode_line(thresh.row(i));
+        if (is_valid) {
+        break;
+        }
+    }
+    return std::make_tuple(ean13, is_valid, thresh);
+}
+
+
+//////////////////////////////////////////////////
 
 cv::Mat crop_rect(cv::RotatedRect rect, cv::Point2f box[], cv::Mat img) {
     float W = rect.size.width;
