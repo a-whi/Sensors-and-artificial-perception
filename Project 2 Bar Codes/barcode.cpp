@@ -197,7 +197,11 @@ int verify(const std::string& barcode){
         }
     }
     int sum = (odd + even)%10;
-    sum = 10 - sum;
+
+    if (sum != 0){
+        // If sum is not 0, subtract it from 10
+        sum = 10 - sum;
+    }
 
     std::cout << "Barcode[12]: " << barcode_int[12] << std::endl;
     std::cout << "Sum: " << sum << std::endl;
@@ -207,7 +211,7 @@ int verify(const std::string& barcode){
 
 
 int main() {
-    cv::Mat img = cv::imread("/Users/vinaypanicker/Desktop/c++/barcodes/EAN13_Reader/scanned.jpg");
+    cv::Mat img = cv::imread("/Users/vinaypanicker/Desktop/c++/Blob/build/cropped.jpg");
     cv::Mat gray;
     cv::Mat thresh;
 
@@ -242,6 +246,9 @@ int main() {
     std::cout << "Barcode: " << barcode << std::endl;
     std::cout << "Is Valid? " << correct << std::endl;
 
+    if (correct == 1){
+        return 1;
+    }
     return 0;
 }
 
