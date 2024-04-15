@@ -1,3 +1,8 @@
+/*
+Created by: Alex Whitfield and Vinay Panicker
+TRC 3500 Project 2: Detect and decode barcodes   
+*/
+
 #include <opencv2/opencv.hpp>
 #include <vector>
 #include <string>
