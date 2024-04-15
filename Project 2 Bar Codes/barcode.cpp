@@ -117,6 +117,8 @@ void processSegmentLengths(const std::vector<int>& data_lengths, std::string& cu
             int at2 = calcAt(t2_t);
             int at4 = calcAt(t4_t);
 
+            std::cout << "at1: " << at1 << " at2: " << at2 << " at4: " << at4 << std::endl;
+
             std::string parity, digit;
             std::tie(parity, digit) = getDecodedValue(at1, at2, at4);
 
@@ -143,7 +145,13 @@ std:: string getBarcode(std::string parity_l, std::string parity_r, std::string 
 
         std::swap(parity_l, parity_r);
         std::swap(digit_l, digit_r);
+
+        for (char& c : parity_l) {
+            c = (c == 'O') ? 'E' : 'O';
+        }
     }  
+
+    std::cout << "PARTIY_L: " << parity_l << std::endl;
 
     std::unordered_map<std::string, std::string> parityMap = {
         {"OOOOOO", "0"},
@@ -163,9 +171,43 @@ std:: string getBarcode(std::string parity_l, std::string parity_r, std::string 
     return barcode;
 }
 
+int verify(const std::string& barcode){
+
+    int odd = 0;
+    int even = 0;
+
+    //convert barcode to an array of integers
+    std::vector<int> barcode_int;
+    for (char c : barcode){
+        barcode_int.push_back(c - '0');
+    }
+
+    // print barcode_int array
+    for (int i = 0; i<barcode_int.size(); i++){
+        std::cout << barcode_int[i] << " ";
+    }
+
+    for (int i = 0; i<=11; i++){
+        std::cout << "Barcode[" << i << "]: " << barcode_int[i] << std::endl;
+        if(i%2 != 0){
+            odd += barcode_int[i]*3;
+        }
+        else{
+            even += barcode_int[i];
+        }
+    }
+    int sum = (odd + even)%10;
+    sum = 10 - sum;
+
+    std::cout << "Barcode[12]: " << barcode_int[12] << std::endl;
+    std::cout << "Sum: " << sum << std::endl;
+
+    return (sum == barcode_int[12]) ? 1 : 0;
+}
+
 
 int main() {
-    cv::Mat img = cv::imread("");
+    cv::Mat img = cv::imread("/Users/vinaypanicker/Desktop/c++/barcodes/EAN13_Reader/scanned.jpg");
     cv::Mat gray;
     cv::Mat thresh;
 
@@ -196,7 +238,11 @@ int main() {
     
     // Merge left and right data lengths based on parity
     std::string barcode = getBarcode(currentParity_l, currentParity_r, currentDigit_l, currentDigit_r);
+    int correct = verify(barcode);
     std::cout << "Barcode: " << barcode << std::endl;
+    std::cout << "Is Valid? " << correct << std::endl;
 
     return 0;
 }
+
+
