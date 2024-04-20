@@ -5,8 +5,6 @@ TRC 3500 Project 2: Decoding an EAN-13 Barcode
 
 #include <opencv2/opencv.hpp>
 #include <iostream>
-
-#include <opencv2/opencv.hpp>
 #include <vector>
 #include <string>
 #include <map>
@@ -59,7 +57,7 @@ int calcAt(double ti_t) {
 
 std::tuple<std::string, std::string> getDecodedValue(const int& t1, const int& t2, const int& t4) {
     /**
-     * Calculates parity and digit value based on the given ti values.
+     * Calculates parity and digit value based on the given ti values. Based on lecture slides.
      *
      * At Values found based on segment ratios
      * @param t1
@@ -116,7 +114,7 @@ void processSegmentLengths(const std::vector<int>& data_lengths, std::string& cu
      */
     for (size_t i = 0; i < data_lengths.size(); ++i) {
         if (i % 4 == 3) {
-            double t = data_lengths[i] + data_lengths[i-1] + data_lengths[i-2] + data_lengths[i-3];
+            double t = data_lengths[i] + data_lengths[i-1] + data_lengths[i-2] + data_lengths[i-3]; // Total length
             double t1_t = (data_lengths[i] + data_lengths[i-1]) / t;
             double t2_t = (data_lengths[i-1] + data_lengths[i-2]) / t;
             double t4_t = (data_lengths[i-3]) / t;
@@ -125,7 +123,8 @@ void processSegmentLengths(const std::vector<int>& data_lengths, std::string& cu
             int at2 = calcAt(t2_t);
             int at4 = calcAt(t4_t);
 
-            //std::cout << "at1: " << at1 << " at2: " << at2 << " at4: " << at4 << std::endl;
+            // Debugging
+            // std::cout << "at1: " << at1 << " at2: " << at2 << " at4: " << at4 << std::endl;
 
             std::string parity, digit;
             std::tie(parity, digit) = getDecodedValue(at1, at2, at4);
@@ -159,8 +158,6 @@ std:: string getBarcode(std::string parity_l, std::string parity_r, std::string 
         }
     }  
 
-    //std::cout << "PARTIY_L: " << parity_l << std::endl;
-
     std::unordered_map<std::string, std::string> parityMap = {
         {"OOOOOO", "0"},
         {"OOEOEE", "1"},
@@ -179,20 +176,25 @@ std:: string getBarcode(std::string parity_l, std::string parity_r, std::string 
     return barcode;
 }
 
-int verify(const std::string& barcode){
+int getChecksum(const std::string& barcode){
+    /**
+     * Takes the barcode calculates and verifies the check sum.
+     * 
+     * @param barcode Barcode to calculate checksum for
+     * @return barcode if it is correct 
+     * @return "" if the barcode is incorrect
+    */
 
     int odd = 0;
     int even = 0;
 
-    //convert barcode to an array of integers
+    //Convert barcode string to an array of integers
     std::vector<int> barcode_int;
     for (char c : barcode){
         barcode_int.push_back(c - '0');
     }
 
-
     for (int i = 0; i<=11; i++){
-        //std::cout << "Barcode[" << i << "]: " << barcode_int[i] << std::endl;
         if(i%2 != 0){
             odd += barcode_int[i]*3;
         }
@@ -200,35 +202,50 @@ int verify(const std::string& barcode){
             even += barcode_int[i];
         }
     }
+
     int sum = (odd + even)%10;
-    sum = 10 - sum;
 
-    // std::cout << "Barcode[12]: " << barcode_int[12] << std::endl;
-    // std::cout << "Sum: " << sum << std::endl;
+    if (sum != 0){
+        // If sum is not 0, subtract it from 10
+        sum = 10 - sum;
+    }
 
+    // Print out the correct check sum only if it is correct 
+    if (sum == barcode_int[12]){
+        std::cout << "Correct Check Sum: " << sum << std::endl;
+    }
+
+    // Used for SECTION 2 DATA
+    // std::cout << "Barcode:" << barcode << std::endl;
+    
     return (sum == barcode_int[12]) ? 1 : 0;
 }
 
 
-std::string decode(cv::Mat img) {
+std::string getDecodedBarcode(cv::Mat frame) {
+    /**
+     * Decodes the barcode from the given frame.
+     *
+     * @param frame Image Frame of the barcode captured from the camera and cropped.
+     * @return Decoded barcode if valid
+     * @return "" if the barcode is invalid
+    */
+
     cv::Mat gray;
     cv::Mat thresh;
 
-    cv::cvtColor(img, gray, cv::COLOR_BGR2GRAY);
+    cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
     cv::threshold(gray, thresh, 200, 255, cv::THRESH_BINARY + cv::THRESH_OTSU);
 
+    // Invert the image and get the middle row of the image to pass to getSegmentLengths
     thresh = ~thresh;
-    cv::Mat line = thresh.row(static_cast<int>(img.rows / 2));
-    line.setTo(1, line == 255);
+    cv::Mat line = thresh.row(static_cast<int>(frame.rows / 2));
 
+    // Get the segment lengths takes the middle row of the image
     std::vector<int> segmentLengths = getSegmentLengths(line);
 
-    // Split segmentLengths vector
-    std::vector<int> l_guard_lengths(segmentLengths.begin(), segmentLengths.begin() + 3);
     std::vector<int> l_data_lengths(segmentLengths.begin() + 3, segmentLengths.begin() + 27);
-    std::vector<int> m_guard_lengths(segmentLengths.begin() + 27, segmentLengths.begin() + 32);
     std::vector<int> r_data_lengths(segmentLengths.begin() + 32, segmentLengths.begin() + 56);
-    std::vector<int> r_guard_lengths(segmentLengths.begin() + 56, segmentLengths.begin() + 59);
 
     // Process left and right data lengths
     std::string currentParity_l = "";
@@ -241,55 +258,66 @@ std::string decode(cv::Mat img) {
     
     // Merge left and right data lengths based on parity
     std::string barcode = getBarcode(currentParity_l, currentParity_r, currentDigit_l, currentDigit_r);
-    int correct = verify(barcode);
-
-    // std::cout << "Barcode: " << barcode << std::endl;
-    // std::cout << "Is Valid? " << correct << std::endl;
+    int correct = getChecksum(barcode);
+    
     if (correct == 1){
+        // Only return the barcode if the check sum is correct
         return barcode;
     }
+
+    // Return empty string if the check sum is incorrect
     return "";
 }
 
 
-cv::Mat crop_rect(cv::RotatedRect rect, cv::Point2f box[], cv::Mat img) {
-    float W = rect.size.width;
-    float H = rect.size.height;
+cv::Mat getRotateCrop(cv::RotatedRect rect, cv::Point2f box[], cv::Mat frame) {
+    /**
+     * Rotates and crops the image based on the bounding rectangle.
+     *
+     * @param rect Rotated rectangle of the barcode
+     * @param box Bounding box of the barcode
+     * @param frame Image Frame of the barcode captured from the camera
+     * @return Cropped image of the barcode
+     */
+
+    // Extract coordinates
     std::vector<float> Xs, Ys;
     for (int i = 0; i < 4; ++i) {
         Xs.push_back(box[i].x);
         Ys.push_back(box[i].y);
     }
-    float x1 = *std::min_element(Xs.begin(), Xs.end());
-    float x2 = *std::max_element(Xs.begin(), Xs.end());
-    float y1 = *std::min_element(Ys.begin(), Ys.end());
-    float y2 = *std::max_element(Ys.begin(), Ys.end());
+    float x1 = *std::min_element(Xs.begin(), Xs.end()), x2 = *std::max_element(Xs.begin(), Xs.end());
+    float y1 = *std::min_element(Ys.begin(), Ys.end()), y2 = *std::max_element(Ys.begin(), Ys.end());
 
-    // Center of rectangle in source image
+    // Center & size of bounding rectangle
     cv::Point2f center = cv::Point2f((x1 + x2) / 2, (y1 + y2) / 2);
-    // Size of the upright rectangle bounding the rotated rectangle
     cv::Size2f size = cv::Size2f(x2 - x1, y2 - y1);
-    // Cropped upright rectangle
-    cv::Mat cropped;
-    cv::getRectSubPix(img, size, center, cropped);
 
+    // Crop the image based on the bounding rectangle passed
+    cv::Mat cropped;
+    cv::getRectSubPix(frame, size, center, cropped);
+
+    // Rotate 
     float angle = rect.angle;
-    if (angle != 90) { // need rotation
-        if (angle > 45)
-            angle = 0 - (90 - angle);
-        // Rotation matrix
+    if (angle != 90) {
+        angle = angle > 45 ? 0 - (90 - angle) : angle;
         cv::Mat M = cv::getRotationMatrix2D(cv::Point2f(size.width / 2, size.height / 2), angle, 1.0);
         cv::warpAffine(cropped, cropped, M, size);
-
-        float croppedW = H > W ? H : W;
-        float croppedH = H < W ? H : W;
-        // Final cropped & rotated rectangle
-        cv::getRectSubPix(cropped, cv::Size2f(croppedW, croppedH), cv::Point2f(size.width / 2, size.height / 2), cropped);
+        float W = std::max(rect.size.height, rect.size.width);
+        float H = std::min(rect.size.height, rect.size.width);
+        cv::getRectSubPix(cropped, cv::Size2f(W, H), cv::Point2f(size.width / 2, size.height / 2), cropped);
     }
     return cropped;
 }
 
-std::map<std::string, cv::Mat> detect_barcode(int camera_index = 1) {
+std::map<std::string, cv::Mat> detectBarcode(int camera_index = 1) {
+    /**
+     * Detects the barcode from the camera feed, using helper functions.
+     *
+     * @param camera_index Index of the camera device
+     * @return {}
+     */
+
     // Initialize video capture device
     cv::VideoCapture cap(camera_index);
     if (!cap.isOpened()) {
@@ -349,6 +377,7 @@ std::map<std::string, cv::Mat> detect_barcode(int camera_index = 1) {
         cv::findContours(closed.clone(), cnts, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
         if (!cnts.empty()) {
+
             std::vector<cv::Point> c = *std::max_element(cnts.begin(), cnts.end(),
                 [](const std::vector<cv::Point>& a, const std::vector<cv::Point>& b) {
                     return cv::contourArea(a) < cv::contourArea(b);
@@ -358,26 +387,36 @@ std::map<std::string, cv::Mat> detect_barcode(int camera_index = 1) {
             cv::RotatedRect rect = cv::minAreaRect(c);
             cv::Point2f box[4];
             rect.points(box);
-            cv::Mat cropped = crop_rect(rect, box, frame);
-
+            cv::Mat cropped = getRotateCrop(rect, box, frame);
 
             // Draw a bounding box around the detected barcode
             cv::drawContours(frame, std::vector<std::vector<cv::Point>>({std::vector<cv::Point>(box, box + 4)}), -1, cv::Scalar(0, 255, 0), 3);
-//
-//not needed
-//             // Save the cropped region as an imag
-//             
+        
+            // Break the loop when 'q' is pressed
             if (cv::waitKey(1) == 'q'){
-                std::string result = decode(cropped);
+                std::string result = getDecodedBarcode(cropped);
                 if (result != "") {
-                    //cv::putText(frame, "Barcode: " + result, cv::Point(10, 50), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
+
+                    // Print out the barcode (check sum gets printed in getChecksum function)
                     std::cout << "Barcode: " << result << std::endl;
+
+                    // Print out current time and date used for SECTION 2 DATA
+                    time_t now = time(0);
+                    char* dt = ctime(&now);
+                    std::cout << "Date and Time: " << dt << std::endl;
+                    
+                    // Save the cropped region as an image used for SECTION 2 DATA
+                    cv::imwrite("cropped.jpg", cropped);
                     break;
                 }
+                // If the barcode is not detected print out an error message
+                std::cout << "Barcode incorrectly detected" << std::endl;
+
+                // Save the cropped region as an image used for SECTION 2 DATA
                 cv::imwrite("cropped.jpg", cropped);
                 break;
             }
-// //
+
             // Plot the centroid of the barcode
             cv::Moments M = cv::moments(c, true);
             cv::Point centroid(M.m10 / M.m00, M.m01 / M.m00);
@@ -387,9 +426,6 @@ std::map<std::string, cv::Mat> detect_barcode(int camera_index = 1) {
         // Display the resulting frame
         cv::imshow("Barcode Detection", frame);
 
-        // Break the loop when 'q' is pressed
-        
-     
     }
 
     // Release the video capture device and close all windows
@@ -400,6 +436,9 @@ std::map<std::string, cv::Mat> detect_barcode(int camera_index = 1) {
 
 
 int main() {
-    detect_barcode();
+    /*
+    Main function to run the barcode detection.
+    */
+    detectBarcode();
     return 0;
 }
