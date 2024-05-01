@@ -10,6 +10,9 @@
  * ========================================
 */
 #include "project.h"
+#include <stdio.h>
+#include <math.h>
+
 int store_reading(int number) { //This function will store the reading into 4 place value variables to be returned
     //number needs to be in xxxx form, so I have not taken into account where the decimal point (dp) should be
     int 1000_count = 0; //these will be the variables to store the numbers of different place values
@@ -23,17 +26,17 @@ int store_reading(int number) { //This function will store the reading into 4 pl
                 result = number - 1000;
                 1000_count++;
             }
-        } elseif (i == 1) {
+        } else if (i == 1) {
             while (result > 100) {
                 result = result - 100;
                 100_count++;
             }
-        } elseif (i == 2) {
+        } else if (i == 2) {
             while (result > 10) {
                 result = result - 10;
                 100_count++;
             }
-        } elseif (i == 3) {
+        } else if (i == 3) {
             while (result > 1) {
                 result = result - 1;
                 100_count++;
@@ -48,38 +51,52 @@ int convert_count2binarray(int digit) { //converts the numbers saved in the coun
     int bin_array[8]; //initialises array of size 1x8 to show the on/off state of each segment and decimal point in 7-segment display
     if (digit == 0) {
         bin_array = [0,0,1,1,1,1,1,1]; //here the elements represent the following segments: [dp,G,F,E,D,C,B,A]
-    } elseif (digit == 1) {
+    } else if (digit == 1) {
         bin_array = [0,0,0,0,0,1,1,0];
-    } elseif (digit == 2) {
+    } else if (digit == 2) {
         bin_array = [0,1,0,1,1,0,1,1];
-    } elseif (digit == 3) {
+    } else if (digit == 3) {
         bin_array = [0,1,0,0,1,1,1,1];
-    } elseif (digit == 4) {
+    } else if (digit == 4) {
         bin_array = [0,1,1,0,0,1,1,0];
-    } elseif (digit == 5) {
+    } else if (digit == 5) {
         bin_array = [0,1,1,0,1,1,0,1];
-    } elseif (digit == 6) {
+    } else if (digit == 6) {
         bin_array = [0,1,1,1,1,1,0,1];
-    } elseif (digit == 7) {
+    } else if (digit == 7) {
         bin_array = [0,0,0,0,0,1,1,1];
-    } elseif (digit == 8) {
+    } else if (digit == 8) {
         bin_array = [0,1,1,1,1,1,1,1];
-    } elseif (digit == 9) {
+    } else if (digit == 9) {
         bin_array = [0,1,1,0,1,1,1,1];
     }
     return bin_array;
 }
 
 int display_7seg(int &array) { //takes array of size 1x8 of 0 and 1 for 1 count variable and send to correct transistor
-    long int binaryval = 0;
+    
+int dec_num;
+    char hex_num[2]; //note! This the hexadecimal number is defined as an array of characters which need to be converted to numbers
     for (int i = 0; i < 8; i++) {//this for loop is to invert the binary sequence becasue pin needs to be active low
-        if (array[i] == 0) {
+        if (array[i] == 0)
             array[i] = 1;
-        } else {
+        else {
             array[i] = 0;
         }
     }
-    long int hexadecimalval = 0, j = 1, remainder; // I copied this code for converting binary to hexadecimal from https://www.sanfoundry.com/c-program-convert-binary-hex/
+    for (int j = 0; j < 8; j++) { //turning binary values into decimal
+        if (array[j] == 1)
+            dec_num += pow(2,j);
+    }
+    j = 0;
+    while (dec_num != 0) { // code from https://www.sanfoundry.com/c-program-convert-decimal-hex/
+        if ((dec_num%16) < 10)
+            hex_num[j++] = 48 + (dec_num%16);
+        else
+            hex_num[j++] = 55 + (dec_num%16);
+        dec_num = dec_num / 16;
+    }
+    /*long int binaryval, hexadecimalval = 0, j = 1, remainder; // I copied this code for converting binary to hexadecimal from https://www.sanfoundry.com/c-program-convert-binary-hex/
     while (binaryval != 0)
     {
         remainder = binaryval % 10;
@@ -88,6 +105,7 @@ int display_7seg(int &array) { //takes array of size 1x8 of 0 and 1 for 1 count 
         binaryval = binaryval / 10;
     }
     printf("Equivalent hexadecimal value: %lX", hexadecimalval);
+    */
 }
 
 int main(void)
@@ -98,6 +116,7 @@ CyGlobalIntEnable; /* Enable global interrupts. */
     PGA_1_Start();
     Comp_1_Start();
     VDAC8_1_Start();
+    LCD_Seg_1_Start();
     for(;;)
     {
         /* Place your application code here. */
