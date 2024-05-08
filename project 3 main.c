@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <math.h>
 
+/*
 int store_reading(int number) { //This function will store the reading into 4 place value variables to be returned
     //number needs to be in xxxx form, so I have not taken into account where the decimal point (dp) should be
     int 1000_count = 0; //these will be the variables to store the numbers of different place values
@@ -76,7 +77,7 @@ int convert_count2binarray(int digit) { //converts the numbers saved in the coun
 int display_7seg(int &array) { //takes array of size 1x8 of 0 and 1 for 1 count variable and send to correct transistor
     
 int dec_num;
-    char hex_num[2]; //note! This the hexadecimal number is defined as an array of characters which need to be converted to numbers
+    char hex_num[2];
     for (int i = 0; i < 8; i++) {//this for loop is to invert the binary sequence becasue pin needs to be active low
         if (array[i] == 0)
             array[i] = 1;
@@ -96,7 +97,7 @@ int dec_num;
             hex_num[j++] = 55 + (dec_num%16);
         dec_num = dec_num / 16;
     }
-    /*long int binaryval, hexadecimalval = 0, j = 1, remainder; // I copied this code for converting binary to hexadecimal from https://www.sanfoundry.com/c-program-convert-binary-hex/
+    long int binaryval, hexadecimalval = 0, j = 1, remainder; // I copied this code for converting binary to hexadecimal from https://www.sanfoundry.com/c-program-convert-binary-hex/
     while (binaryval != 0)
     {
         remainder = binaryval % 10;
@@ -106,7 +107,6 @@ int dec_num;
     }
     printf("Equivalent hexadecimal value: %lX", hexadecimalval);
     */
-}
 
 int main(void)
 {
@@ -117,6 +117,12 @@ CyGlobalIntEnable; /* Enable global interrupts. */
     Comp_1_Start();
     VDAC8_1_Start();
     LCD_Seg_1_Start();
+    LCD_Seg_1_Write7SegDigit_0(5,0);
+    LCD_Seg_1_Write7SegDigit_0(1,1);
+    LCD_Seg_1_Write7SegDigit_0(2,2);
+    LCD_Seg_1_Write7SegDigit_0(3,3);
+    //LCD_Seg_1_WritePixel(LCD_DP1,1);
+    //Pin_2_read();
     for(;;)
     {
         /* Place your application code here. */
